@@ -1,12 +1,31 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from contextlib import asynccontextmanager
 import os
+import logging
 from app.core.config import settings
 from app.api.v1.router import api_router
+from app.db.session import engine, Base
+import app.models  # Ensures all models are registered with Base.metadata
 
-# Ensure uploads directory exists
-os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("smartfridge")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Ensure upload directories and create database tables if they don't exist
+    os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables initialized successfully.")
+    except Exception as e:
+        logger.error(f"Error initializing database tables: {e}")
+    yield
+    # Shutdown logic if any
+    pass
+
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
@@ -25,6 +44,7 @@ app = FastAPI(
     openapi_url=f"{settings.API_V1_STR}/openapi.json",
     docs_url=f"{settings.API_V1_STR}/docs",
     redoc_url=f"{settings.API_V1_STR}/redoc",
+    lifespan=lifespan
 )
 
 # Configure Cross-Origin Resource Sharing (CORS)

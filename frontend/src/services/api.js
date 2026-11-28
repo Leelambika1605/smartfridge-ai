@@ -1,9 +1,7 @@
 import axios from 'axios';
 
 let rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1';
-// Ensure no trailing slash
 rawUrl = rawUrl.replace(/\/+$/, '');
-// Ensure /api/v1 suffix is present
 const API_BASE_URL = rawUrl.endsWith('/api/v1') ? rawUrl : `${rawUrl}/api/v1`;
 
 const apiClient = axios.create({
@@ -14,7 +12,7 @@ const apiClient = axios.create({
   },
 });
 
-// Request interceptor to attach JWT token
+// Request interceptor: Automatically injects JWT Bearer token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('smartfridge_token');
@@ -26,7 +24,7 @@ apiClient.interceptors.request.use(
   (error) => Promise.reject(error)
 );
 
-// Response interceptor for unified error handling
+// Response interceptor: Clears token on 401 Unauthorized
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -40,6 +38,33 @@ apiClient.interceptors.response.use(
 export const systemService = {
   getHealth: async () => {
     const response = await apiClient.get('/health');
+    return response.data;
+  },
+};
+
+export const authService = {
+  login: async (email, password) => {
+    const response = await apiClient.post('/auth/login', { email, password });
+    return response.data;
+  },
+  register: async (email, fullName, password) => {
+    const response = await apiClient.post('/auth/register', {
+      email,
+      full_name: fullName,
+      password,
+    });
+    return response.data;
+  },
+  getProfile: async () => {
+    const response = await apiClient.get('/auth/me');
+    return response.data;
+  },
+  updateProfile: async (data) => {
+    const response = await apiClient.put('/auth/me', data);
+    return response.data;
+  },
+  getRefrigerators: async () => {
+    const response = await apiClient.get('/auth/refrigerators');
     return response.data;
   },
 };
